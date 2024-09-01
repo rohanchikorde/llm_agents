@@ -113,6 +113,6 @@ if __name__ == "__main__":
     print('Hello LangChain!')
 
     # Example usage
-    name = "Rohan Chikorde "
+    name = "Rohan Chikorde Linkedin VP BNYMellon "
     linkedin_profile_url = lookup(name)
     print(f"LinkedIn profile URL for {name}: {linkedin_profile_url}")
