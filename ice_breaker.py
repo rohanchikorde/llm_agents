@@ -3,26 +3,32 @@ This script uses the LangChain library to generate a summary and interesting fac
 It performs the following steps:
 
 1. Loads environment variables from a .env file.
-2. Configures the AzureChatOpenAI model for generating responses using settings from the config.
+2. Configures API settings and headers for making requests to the Azure OpenAI endpoint.
 3. Defines a prompt template for generating the summary and interesting facts.
 4. Scrapes LinkedIn profile data using a third-party library.
 5. Converts the scraped data to a string format.
-6. Constructs a prompt for the AzureChatOpenAI model.
-7. Invokes the AzureChatOpenAI model with the constructed prompt.
-8. Handles the response and prints the generated output.
+6. Constructs messages for the OpenAI API request.
+7. Initializes the AzureChatOpenAI client with the configured settings.
+8. Creates an LLMChain with the prompt template and AzureChatOpenAI client.
+9. Invokes the chain with the LinkedIn data to generate the summary and interesting facts.
+10. Prints the generated output.
 
 Dependencies:
 - langchain
 - dotenv
+- requests
+- json
 - third_parties.linkedin (for scraping LinkedIn profile data)
 """
-
+from langchain.prompts.prompt import PromptTemplate
 from langchain_openai import AzureChatOpenAI
-from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 from dotenv import load_dotenv
 from third_parties.linkedin import scrape_linkedin_profile
 import os
+import requests
 import json
+from agents.linkedin_lookup_agent import lookup as linkedin_lookup_agent
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,30 +42,34 @@ config = {
     "default_headers": {"Ocp-Apim-Subscription-Key": os.getenv("API_KEY")},
 }
 
-# Headers
+# Headers for the API request
 headers = {
     "Content-Type": "application/json",
     "Ocp-Apim-Subscription-Key": config["api_key"],
 }
 
 
-# Initialize the AzureChatOpenAI model using settings from the config
-model = AzureChatOpenAI(
-    azure_endpoint=config["azure_endpoint"],  # Azure endpoint
-    openai_api_key=config["api_key"],  # Azure API key
-    azure_deployment=config["model_name"],  # Deployment name
-    openai_api_version=config["api_version"],  # API version
-    temperature=0,
-    default_headers=headers
-)
+def ice_break_with(name: str) -> str:
+    """
+    Generates a summary and interesting facts about a LinkedIn profile.
 
-if __name__ == "__main__":
-    print('Hello LangChain!')
+    Args:
+        name (str): The name of the person whose LinkedIn profile is to be summarized.
 
+    Returns:
+        str: The generated summary and interesting facts.
+    """
+    # Lookup LinkedIn username using the provided name
+    linkedin_username = linkedin_lookup_agent(name=name)
+
+    # Scrape LinkedIn profile data
+    linkedin_data = scrape_linkedin_profile(linkedin_username, mock=True)
+
+    # Define the prompt template for generating the summary and interesting facts
     summary_template = """
-    Given the LinkedIn information {information} about a person, I want you to create:
-    1. A short summary of the person's profile.
-    2. Two interesting facts about the person with pointers as "-" under a section titled "Interesting Facts". Create this section only if there are facts.
+    given the Linkedin information {information} about a person, I want you to create a :
+    1. A short summary of the person's profile
+    2. two interesting facts about the person with pointers as "-" with title as "Interesting Facts" section. Create a section only if there are facts.
     """
 
     summary_prompt_template = PromptTemplate(
@@ -67,23 +77,29 @@ if __name__ == "__main__":
         template=summary_template
     )
 
-    linkedin_data = scrape_linkedin_profile(
-        "https://www.linkedin.com/in/eden-marco"
+    # Initialize the AzureChatOpenAI client
+    llm = AzureChatOpenAI(
+        azure_endpoint=config["azure_endpoint"],  # Azure endpoint
+        openai_api_key=config["api_key"],  # Azure API key
+        azure_deployment=config["model_name"],  # Deployment name
+        openai_api_version=config["api_version"],  # API version
+        temperature=0,
+        default_headers=headers
     )
-    print('Scraped LinkedIn data successfully.')
 
-    # Ensure linkedin_data is a string
-    linkedin_data_str = json.dumps(linkedin_data, indent=2) if isinstance(
-        linkedin_data, dict) else str(linkedin_data)
+    # Create an LLMChain with the prompt template and AzureChatOpenAI client
+    chain = LLMChain(
+        llm=llm,
+        prompt=summary_prompt_template
+    )
 
-    # Construct the prompt
-    prompt = summary_prompt_template.format(information=linkedin_data_str)
+    # Invoke the chain with the LinkedIn data to generate the summary and interesting facts
+    res = chain.invoke(input={"information": linkedin_data})
 
-    # Invoke the model with the constructed prompt
-    response = model.invoke([
-        {"role": "system", "content": "You are an AI assistant."},
-        {"role": "user", "content": prompt},
-    ])
+    # Print the generated output
+    print(res)
 
-    # Print the output
-    print('LLM output:', response.content)
+
+if __name__ == "__main__":
+    print('LLM Application Launching: Ice Breaker...')
+    ice_break_with('Rohan Chikorde Linkedin VP BNYMellon')
