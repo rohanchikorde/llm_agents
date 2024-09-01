@@ -4,24 +4,24 @@ It uses the LangChain library to create an agent that interacts with the Azure O
 The agent uses a tool to crawl Google for the LinkedIn profile page URL of the specified person.
 """
 
-from langchain_openai import AzureChatOpenAI
-from langchain import hub
-from langchain.agents import (
-    create_react_agent,
-    AgentExecutor
-)
-from langchain_core.tools import Tool
-from langchain.prompts.prompt import PromptTemplate
-import langchain_openai
-from dotenv import load_dotenv
-import requests
-from tools.tools import get_profile_url_tavily
 import sys
 import os
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from tools.tools import get_profile_url_tavily
+import requests
+from dotenv import load_dotenv
+import langchain_openai
+from langchain.prompts.prompt import PromptTemplate
+from langchain_core.tools import Tool
+from langchain.agents import (
+    create_react_agent,
+    AgentExecutor
+)
+from langchain import hub
+from langchain_openai import AzureChatOpenAI
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,7 +40,6 @@ headers = {
     "Content-Type": "application/json",
     "Ocp-Apim-Subscription-Key": config["api_key"],
 }
-
 
 def lookup(name: str) -> str:
     """
